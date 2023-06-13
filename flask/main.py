@@ -1,5 +1,6 @@
 from flask import Flask, render_template, request
 
+import json
 import tensorflow as tf
 import numpy as np
 import pandas as pd
@@ -17,23 +18,41 @@ tokenizer = joblib.load('token.pkl')
 def homepage():
     return render_template("index.html")
 
-@app.route('/predict', methods=['POST'])
+@app.route('/api/predict', methods=['POST'])
 def predict():
     #Contoh data, bisa dalam List of String
-    data= ['saya senang sekali', 'saya benci kamu','jelek']
-    data_cleaned =[]
-    for i in range(len(data)):
-        temp = data[i].lower()
-        temp = re.sub(r'[^\w\s]', '', temp)
-        temp = re.sub("\d+", "", temp)
-        data_cleaned.append(temp)
-    
-    encode = tokenizer.texts_to_sequences(data_cleaned)
-    seq = pad_sequences(encode, maxlen=120, padding='post', truncating='post')
+    # data= ['saya senang sekali', 'saya benci kamu']
+    if request.headers['Content-Type'] == 'application/json':
+        try:
+            requestBody = request.json
+            data_cleaned =[]
+            data_output = []
+            for i in range(len(requestBody)):
+                temp = requestBody[i].lower()
+                temp = re.sub(r'[^\w\s]', '', temp)
+                temp = re.sub("\d+", "", temp)
+                data_cleaned.append(temp)
+            
+            encode = tokenizer.texts_to_sequences(data_cleaned)
+            seq = pad_sequences(encode, maxlen=120, padding='post', truncating='post')
 
+            predictions = (model.predict(seq) > 0.5).astype("int32")
+            # [[0 1] [1 0]]
+            good = "[0 1]"
+            print(predictions)
+            for x in predictions:
+                print(x)
+                if str(x) == good:
+                    data_output.append("good")
+                else:
+                    data_output.append("not good")
 
-    predictions = (model.predict(seq) > 0.5).astype("int32")
-    return render_template("index.html", predicts = predictions)
+            responseBody = {'message': data_output}
+            return responseBody, 200
+        except Exception as e:
+            return {'error': str(e)}, 400
+    else:
+        return {'error': 'Invalid Content-Type'}, 400
 
 
 if __name__ == '__main__':
