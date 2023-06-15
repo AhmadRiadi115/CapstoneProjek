@@ -1,5 +1,5 @@
 from flask import Flask, render_template, request
-
+import os
 import json
 import tensorflow as tf
 import numpy as np
@@ -56,4 +56,4 @@ def predict():
 
 
 if __name__ == '__main__':
-    app.run(port=3000, debug=True)
+    app.run(debug=True, host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
